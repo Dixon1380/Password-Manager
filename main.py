@@ -55,7 +55,7 @@ def main(isrunning=True):
             website = input("Enter the name of the website: ")
             username = input("What's the username?: ")
             new_password = input("Enter the new password: ")
-            app.modify_password(website, username, password)
+            app.modify_password(website, username, new_password)
             print("This entry has been successfully modified.")
             sleep(1)
         elif choice == '4':
