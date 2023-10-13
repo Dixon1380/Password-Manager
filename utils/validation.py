@@ -1,5 +1,5 @@
 import re
-
+import datetime
 # Invaild Validation Handling
 
 def is_valid_input(value):
@@ -46,3 +46,22 @@ def check_password_complexity(password):
     # Add more rules here if needed
 
     return True, "Password is valid." 
+
+def is_expired(code_timestamp):
+    # Define how long the code is valid for (e.g., 24 hours)
+    expiration_duration = datetime.timedelta(hours=24)
+    
+    # Convert the code_timestamp from string to datetime object
+    # I'm assuming the timestamp is stored in the format 'YYYY-MM-DD HH:MM:SS'
+    # Adjust the format if needed
+    code_time = datetime.datetime.strptime(code_timestamp, '%Y-%m-%d %H:%M:%S')
+    
+    # Get current datetime
+    current_time = datetime.datetime.now()
+    
+    # Calculate the expiration time for the code
+    expiration_time = code_time + expiration_duration
+    
+    # If the current time is beyond the expiration time, then the code has expired
+    return current_time > expiration_time
+

@@ -1,10 +1,12 @@
 import sqlite3
 import os
 from config import directory, db_path
+from utils import logging
 
 def create_directory(dir_path):
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
+    logging.log_info(f"{dir_path} was created.")
 
 def init_db():
     create_directory(directory)
@@ -16,10 +18,10 @@ def init_db():
             # Creating the users table
             cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
-                user_id  TEXT PRIMARY KEY,  # user_id set as the primary key
+                user_id  TEXT PRIMARY KEY, 
                 username TEXT NOT NULL UNIQUE,
                 password TEXT NOT NULL,
-                email TEXT NOT NULL UNIQUE, # assuming each user's email is unique
+                email TEXT NOT NULL UNIQUE, 
                 date_created DATE,
                 is_lockout INTEGER
             );
@@ -47,10 +49,21 @@ def init_db():
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_website ON passwords(website)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_date_created ON passwords(date_created)')
             
+            # Creating the users code table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS user_codes(
+                    code_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    unique_code VARCHAR(6),
+                    code_timestamp DATETIME,
+                    expired BOOLEAN DEFAULT FALSE
+                    FOREIGN KEY (user_id) REFERENCES user(user_id)
+                );
+            ''')
             connection.commit()
 
         except sqlite3.Error as e:
-            print("Database error:", e)  # or log it
-            return (False, str(e))
+            logging.log_error(f"Database error: {e}")  
+            return False
         
-    return {"status":True, "message": "Database initialized successfully"}
+    return True

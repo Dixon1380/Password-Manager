@@ -54,9 +54,11 @@ class Account:
         - bool: True if registration is successful, False otherwise.
         """
         hashed_password = cls.hash_password(password)
-        success, user_id = dbm.register_user(username, hashed_password, email)
+        success = dbm.register_user(username, hashed_password, email)
         if success:
             # Additional steps, like creating user-specific tables or sending confirmation emails, can be added here if necessary
             return True
         else:
             return False
+    
+  
