@@ -2,13 +2,25 @@ from account import Account
 from config import Config
 import utils.validation as utils
 import utils.hashing as hash
-import utils.file_creator as file
 import database_manager as dbm
 from email_handler import send_reset_email
 import string
 import random
 from utils import logging
-from config import default_config
+import uuid
+
+
+def generate_user_id():
+    user_id = str(uuid.uuid4())
+    return user_id
+
+def generate_unique_code():
+    """Generates a unique six-digit code.
+
+    Returns:
+        str: The generated six-digit code.
+    """
+    return str(random.randint(100000,999999))
 
 
 # User Auth and Creation Functions
@@ -53,13 +65,8 @@ def add_user(username, password, confirm_password, email):
             message = "Password do not match"
             return False,  message
     
-def generate_unique_code():
-    """Generates a unique six-digit code.
 
-    Returns:
-        str: The generated six-digit code.
-    """
-    return str(random.randint(100000,999999))
+
 
 def get_user_details_by_email(email):
      """Retrieve username and user_id from database using email
@@ -89,8 +96,6 @@ def send_reset_password_email(email):
             return False
     else:
         return False
-
-
 
 def reset_password(password, confirm_password, email, code):
         if password == confirm_password:

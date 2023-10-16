@@ -22,7 +22,7 @@ class Account:
 
 
     @classmethod
-    def verify(cls, username, password):
+    def verify(cls, user_id, username, password):
         """
         Verifies user in the database
 
@@ -33,7 +33,7 @@ class Account:
         Returns:
         - bool: True if verification is successful, False otherwise.
         """
-        result = dbm.get_password_by_user(username)
+        result = dbm.get_password_by_user(user_id, username)
         if result:
             stored_password = result[0]
             return check_password(password.encode('utf-8'), stored_password.encode('utf-8'))
@@ -41,7 +41,7 @@ class Account:
         
       
     @classmethod
-    def create_user(cls, username, password, email):
+    def create_user(cls, user_id, username, password, email):
         """
         Registers a new user in the database 
 
@@ -54,11 +54,10 @@ class Account:
         - bool: True if registration is successful, False otherwise.
         """
         hashed_password = cls.hash_password(password)
-        success = dbm.register_user(username, hashed_password, email)
+        success = dbm.register_user(user_id, username, hashed_password, email)
         if success:
-            # Additional steps, like creating user-specific tables or sending confirmation emails, can be added here if necessary
-            return True
+            return True, user_id
         else:
-            return False
+            return False, None
     
   
