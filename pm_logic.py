@@ -1,36 +1,52 @@
 from account import Account
-from settings import Settings
+from config import Config
 import utils.validation as utils
 import utils.hashing as hash
+import utils.file_creator as file
 import database_manager as dbm
 from email_handler import send_reset_email
 import string
 import random
 from utils import logging
+from config import default_config
+
 
 # User Auth and Creation Functions
 def check_credentials(username, password):
+        logging.log_warn("Attempt to check valid inputs from username and password....")
         if not utils.is_valid_input(username) or not utils.is_valid_input(password):
+            logging.log_error("Invalid input in username or password fields....")
             return False, "Invalid input! Please try again."
         else:
+            logging.log_warn("Attempt to verify user within our database.....")
             if Account.verify(username, password):
+                logging.log_info("Success. Account does exists.")
+                logging.log_info("Processing account for login.....")
                 user_id = dbm.get_user_id_by_username(username)
                 return True, user_id, username
             else:
+               logging.log_info("Account does not exist. Either password or username is not spelled corrently.")
                return False, "Incorrect login!", None, None
                 
 
 def add_user(username, password, confirm_password, email):
+        logging.log_warn("Attempting to register new user within our database.")
+        logging.log_info("Verifying password match....")
         if utils.is_password_match(password, confirm_password):
+            logging.log_info("Success. Password were matched.")
+            logging.log_warn("Matching password with our security policy...")
             success, message = utils.check_password_complexity(password)
             if success:
-                if Account.create_user(username, password, email):   
-                    logging.log_info(f"User {username} is registered successfully.")
+                logging.log_info("Success. Password does meet complexity requirements.")
+                logging.log_warn("Attempting to add user.....")
+                if Account.create_user(username, password, email):
+                    logging.log_info(f"Success. User {username} was successfully added to our database.")   
                     return True, f"{username} has been successfully registered!"
                 else:
-                    logging.log_warning(f"Attempt to register already existing user: {username}. ")
+                    logging.log_warn(f"Attempt to register already existing user: {username}. ")
                     return False, f"{username} is already in the database."
             else:
+                 logging.log_error()
                  message = "Failed to create account. check logs for more details."
                  return False, message
         else:
@@ -85,7 +101,7 @@ def reset_password(password, confirm_password, email, code):
                  if user_id:
                     stored_code, code_timestamp = dbm.get_code_from_db(user_id)
                  if stored_code == code and not utils.is_expired(code_timestamp):
-                    if dbm.update_password(hashed_password):
+                    if dbm.update_password(email, hashed_password):
                         return True, "Password successfully updated!" 
                  else:
                     return False, "Unique code does not match"
@@ -207,7 +223,6 @@ def delete_entry(user_id, website, username):
                 return True, "Entry was successfully deleted."
             else:
                 return False, "Error deleting entry."
-            return True
         else:
              return False
     
@@ -215,29 +230,53 @@ def delete_entry(user_id, website, username):
 # Main Application's Settings Functions
 
 def initialize_user_settings(user_id):
-    """Loads user_data for user"""
-    user_settings = Settings(user_id)
-    if not user_settings.load_settings():
-         user_settings.load_default_settings()
-    else:
-         return user_settings
+    """Creates the user_settings file for user if not exists."""
+    config = Config(user_id)
+    user_settings_config = config._load_configurations(config.settings_filename)
+    user_db_config = config._load_configurations(config.db_setings_filename)
+    return user_settings_config, user_db_config
     
-def update_user_settings(user_id, key, value):
-     """
-     Update a specific setting for a user.
-     """
-     user_settings = Settings(user_id)
-     user_settings.set_option(key, value)
-     user_settings.save_settings()
-
-def get_user_settings(user_id, key):
+    
+def update_user_settings(user_id, setting_dict):
     """
-    Get a value of a specific setting for a user.
+    Update a specific setting for a user.
     """
-    user_settings = Settings(user_id)
-    return user_settings.get_option(key)
+    config = Config(user_id)
+    for key, value in setting_dict:
+        config.update_setting()
+    
 
-def load_default_settings(user_id):
-     user_settings = Settings(user_id)
-     user_settings.load_default_settings()
-     
+def load_user_settings(user_id, file_path):
+    if user_id not in file_path:
+        raise ValueError("Can not user settings from another user.")
+    config = Config(user_id)
+    config.settings_filename = file_path
+    user_settings = config._load_configurations(file_path)
+    return user_settings
+
+def load_user_db_settings(user_id, db_file_path):
+    if user_id not in db_file_path:
+        raise ValueError("Can not user db settings from another user.")
+    config = Config(user_id)
+    config.db_setings_filename = db_file_path
+    db_config = config._load_configurations(db_file_path)
+    return db_config
+
+def load_default_settings():
+    config = Config()
+    user_settings = config._load_configurations(config.settings_filename)
+    db_user_settings = config._load_configurations(config.db_setings_filename)
+    return user_settings, db_user_settings
+
+def change_user_account_password(user_id, password, confirm_password):
+    if utils.is_password_match(password, confirm_password):
+        hashed_password = Account.hash_password(password)
+        email = dbm.get_email_by_user_id(user_id)
+        success = dbm.update_password(email, hashed_password)
+        if success:
+            return True
+        else:
+            return False
+
+
+

@@ -35,7 +35,7 @@ class GuiLogicInterface:
     def send_reset_password_code(self, email):
         logging.log_info("User clicked on forgot password button.")
         logging.log_info("Processing email for validation....")
-        return pm_logic.reset_password(email)
+        return pm_logic.send_reset_password_email(email)
     
     
     def reset_password(self, password, confirm_password, email, code):
@@ -86,44 +86,50 @@ class GuiLogicInterface:
         return pm_logic.generate_password()
     
     # Settings Logic
-    def initalize_settings(self, user_id):
-        logging.log_info("Initalizing settings")
-        cached_result = self.get_from_cache(f"settings_{user_id}")
-        if cached_result:
-            return cached_result
-        result = pm_logic.initialize_user_settings(user_id)
-        self.add_to_cache(f"settings_{user_id}", result)
-        return result
+    def save_settings(self, user_id, settings):
+        logging.log_warn("Applying changes to user's settings file.")
+        logging.log_info("Saving changes....")
+        pm_logic.update_user_settings(user_id, settings)
+
+    def load_settings(self, user_id):
+        logging.log_info("Loading user settings....")
+        return pm_logic.initialize_user_settings(user_id)
+        
+
+    def load_settings_from_file(self, file_name):
+        logging.log_info("Loading user settings from file....")
+        return pm_logic.load_settings()
     
-   
-    def update_individual_settings(self, user_id, key, setting_name, value):
-        logging.log_info("Updating settings.....")
-        cache_key = f"user_{user_id}_setting_{setting_name}"
-        result = pm_logic.update_user_settings(user_id, key, value)
-        self.add_to_cache(cache_key, result)
-        return result
-   
-    def get_individual_settings(self, user_id, setting_name):
-        logging.log_info("User clicked on load defaults button.")
-        cached_key= f"user_{user_id}_settings_{setting_name}"
-        cached_result = self.get_from_cache(cached_key)
-        if not cached_result:
-            result = pm_logic.get_user_settings(user_id, setting_name)
-            self.add_to_cache(cached_key, result)
-            logging.log_info("Configuring default settings...")
-            return result
-        return cached_result
-    
-    def reset_to_defaults(self, user_id):
-        logging.log_info("Restoring default settings.....")
-        return pm_logic.load_defaults(user_id)
+    def reset_defaults(self):
+        logging.log_info("Reseting settings to default values....")
+        return pm_logic.load_default_settings()
+
+    def change_user_account_password(self, user_id, password, confirm_password):
+        logging.log_info("Changing password.....")
+        return pm_logic.change_user_account_password(user_id, password, confirm_password)
+
+    def remove_account(self, user_id):
+        logging.log_info("Removing user_account...")
+        return pm_logic.remove_account(user_id)
     
     # Utility
     @staticmethod
-    def validate_input(*args):
-         """Validates multiple inputs"""
+    def validate_user_registration(username, password, email):
+         """Validates user's registration"""
          logging.log_info("Checking user's input for validation.....")
-         return all(validation.is_valid_input(arg) for arg in args)  
+         return validation.is_valid_input(username) and validation.is_valid_input(password) and validation.is_email_valid(email)
+    
+    @staticmethod
+    def validate_user_login(username, password):
+        """Validates user's login inputs"""
+        logging.log_info("Checking user's input for validation.....")
+        return validation.is_valid_input(username) and validation.is_valid_input(password)
+    
+    @staticmethod
+    def validate_input(input):
+        """Validates a single user's input"""
+        logging.log_info("Checking user's input for validation.....")
+        return validation.is_valid_input(input)
      
     @staticmethod
     def log_message(type:str, message:str):

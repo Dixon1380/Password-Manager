@@ -1,5 +1,5 @@
 import tkinter as tk
-from gui import LoginFrame, RegisterFrame, ForgotPasswordFrame, PasswordManagerFrame, SettingsFrame
+from gui import LoginFrame, RegisterFrame, ForgotPasswordFrame, PasswordManagerFrame
 import database_setup as dbs
 from utils import logging
 
@@ -12,8 +12,7 @@ class PMApp(tk.Tk):
 
         self.user_id = None
         self.username = None
-        self.user_data = None
-
+        self.user_settings = {}
         self.title("Password Manager 1.0")
         self.geometry("800x300")
 

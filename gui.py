@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, simpledialog
 from tkinter import ttk
 from gui_logic_handler import GuiLogicInterface
 
@@ -12,11 +12,12 @@ class BaseFrame(tk.Frame):
         self.frame_mappings = frame_mappings if frame_mappings else {}
 
     def switch_frame(self, frame_name):
+        gui_api = GuiLogicInterface()
         if frame_name in self.frame_mappings:
             self.destroy()
             self.frame_mappings[frame_name]()
         else:
-            GuiLogicInterface.log_message("error", f"No frame mapping found for {frame_name}")
+            gui_api.log_message("error", f"No frame mapping found for {frame_name}")
 
     def _create_widgets(self):
         pass
@@ -78,26 +79,25 @@ class LoginFrame(BaseFrame):
     def on_login_button(self):
         username = self.user_entry.get()
         password = self.password_entry.get()
-        
-        if not GuiLogicInterface.validate_input(username) or not GuiLogicInterface.validate_input(password):
+        gui_api = GuiLogicInterface()
+        if not gui_api.validate_user_login(username, password):
              messagebox.showerror("Invalid input", "Your input was invalid. Please try again.")
         else:
-            success,user_id, username = GuiLogicInterface.login_user(username, password)
+            success, user_id, username = gui_api.login_user(username, password)
             if success:
                 self.master.user_id = user_id
                 self.master.username = username
-                GuiLogicInterface.log_message(f"{username} is now logged in.")
-                messagebox.showinfo("Login Sucess", "You are now logged in.")
-                self.master.user_data = GuiLogicInterface.initalize_settings(self.master.user_id)
-                success = self.master.user_data.save_settings()
+                self.master.user_settings = gui_api.load_settings(self.master.user_id)
+                gui_api.log_message("info", f"{username} is now logged in.")
+                messagebox.showinfo("Login Success", "You are now logged in.")
                 if success:
-                    GuiLogicInterface.log_message("info", "User data has been loaded successfully.")
+                    gui_api.log_message("info", "User data has been loaded successfully.")
                 else:
-                    GuiLogicInterface.log_message("warn", "No user data was found for this account. Configuring defaults for this account.")
+                    gui_api.log_message("warn", "No user data was found for this account. Configuring defaults for this account.")
                 self.destroy()
                 self.master.show_passmanager_application()
             else:
-                GuiLogicInterface.log_message("error", "Login was unsuccessful")
+                gui_api.log_message("error", "Login was unsuccessful")
                 messagebox.showerror("Login Error", "Username and Password are incorrect or Username does not exist.")
                 
 
@@ -135,16 +135,15 @@ class RegisterFrame(BaseFrame):
         password = self.password_entry.get()
         confirm_password = self.confirm_password_entry.get()
         email = self.email_entry.get()
-
-        if not GuiLogicInterface.validate_input(password) or not GuiLogicInterface.validate_input(username):
+        gui_api = GuiLogicInterface()
+        if not gui_api.validate_user_registration(username, password, email):
             messagebox.showerror("Invalid input!", "You entered invalid input. Please try again.")
+        success, message = gui_api.add_user(username, password, confirm_password, email)
+        if success:
+            messagebox.showinfo("Registration Success", message)
+            self.switch_frame("Login")
         else:
-            success, message = GuiLogicInterface.add_user(username, password, confirm_password, email)
-            if success:
-                messagebox.showinfo("Registration Success", message)
-                self.switch_frame("Login")
-            else:
-                messagebox.showerror("Registration Failed", message)
+            messagebox.showerror("Registration Failed", message)
 
 # Forgot password frame
 class ForgotPasswordFrame(BaseFrame):
@@ -157,15 +156,16 @@ class ForgotPasswordFrame(BaseFrame):
 
     def _create_widgets(self):
         self._create_label("Forgot password", row=0, col=1)
-        self.email_entry = self._create_labeled_entry("Enter the email for the Account:", row=1)
-
+        self.email_entry = self._create_labeled_entry("Enter the email for the Account:", 1, 1, 1, 2)
         self._create_button("Submit", cmd=self.on_submit_button, row=2, col=0)
         self._create_button("Got Code", cmd=self.on_got_code_button, row=2, col=1)
         self._create_button("Login", cmd=self.on_login_button, row=2, col=2)
         
     def on_submit_button(self):
         email = self.email_entry.get()
-        GuiLogicInterface.send_reset_password_code(email)
+        gui_api = GuiLogicInterface()
+        gui_api.log_message('info', f"Sending email code to {email}")
+        gui_api.send_reset_password_code(email)
         messagebox.showinfo("Reset Password", "IF the account exists, you'll be able to reset your password.")
 
     def on_got_code_button(self):
@@ -181,25 +181,36 @@ class ForgotPasswordFrame(BaseFrame):
          self.confirm_password_entry = tk.Entry(self.resetpassword_window, show="*")
          self.confirm_password_entry.grid(row=2, column=1, pady=10)
         
+         email_label = tk.Label(self.resetpassword_window, text="Enter unique code email address: ")
+         email_label.grid(row=3, column=0, pady=10, padx=10)
+         self.email_entry = tk.Entry(self.resetpassword_window)
+         self.email_entry.grid(row=3, column=1, pady=10, padx=10)
+
          unique_code_label = tk.Label(self.resetpassword_window, text="Enter unique code from email:")
-         unique_code_label.grid(row=3, column=0, pady=10, padx=10)
+         unique_code_label.grid(row=4, column=0, pady=10, padx=10)
          self.unique_code_entry = tk.Entry(self.resetpassword_window)
-         self.unique_code_entry.gride(row=3, column=1, pady=10)
+         self.unique_code_entry.grid(row=4, column=1, pady=10)
 
          submit_button = tk.Button(self.resetpassword_window, text="Update password", command=self.on_update_password_button)
-         submit_button.grid(row=3, column=1, pady=10)
+         submit_button.grid(row=5, column=1, pady=10)
 
     def on_update_password_button(self):
         new_password = self.new_password_entry.get()
         confirm_password = self.confirm_password_entry.get()
         email = self.email_entry.get()
         code = self.unique_code_entry.get()
-        if not GuiLogicInterface.validate_input(new_password):
+        if not (new_password and confirm_password and email and code):
+            messagebox.showerror("Error", "All fields are required. Please fill them out.")
+        gui_api = GuiLogicInterface()
+        
+        if not gui_api.validate_input(new_password):
             messagebox.showerror("Error", "Invalid input. Please try again.")
         else:
-            sucess, message = GuiLogicInterface.reset_password(new_password, confirm_password, email, code)
+            sucess, message = gui_api.reset_password(new_password, confirm_password, email, code)
             if sucess:
                 messagebox.showinfo("Success!", message)
+                gui_api.log_message('info', "Returning to login....")
+                self.resetpassword_window.destroy()
                 self.switch_frame("Login")
             else:
                 messagebox.showerror("Error!", message)
@@ -242,8 +253,8 @@ class PasswordManagerFrame(BaseFrame):
 
 
     def on_generate_password_button(self):
-        
-        password = GuiLogicInterface.generate_password()
+        gui_api = GuiLogicInterface()
+        password = gui_api.generate_password()
         messagebox.showinfo("Password Generated", f"Your generated password is: {password}")
         if self.password_entry.get == "":
             self.password_entry.insert(tk.END, password)
@@ -255,21 +266,23 @@ class PasswordManagerFrame(BaseFrame):
         website = self.website_entry.get()
         username = self.username_entry.get()
         password = self.password_entry.get()
-        
-        success, message = GuiLogicInterface.add_entry(self.master.user_id, website, username, password)
+        gui_api = GuiLogicInterface()
+        success, message = gui_api.add_entry(self.master.user_id, website, username, password)
         if success:
-            GuiLogicInterface.log_message("info",message)
+            gui_api.log_message("info",message)
             messagebox.showinfo("New Entry", message)
         else:
-            GuiLogicInterface.log_message("error", message)
+            gui_api.log_message("error", message)
             messagebox.showerror("Entry Error", message)
 
     def on_edit_button(self):
         website = self.website_entry.get()
         username = self.username_entry.get()
         password = self.password_entry.get()
+
+        gui_api = GuiLogicInterface()
         if messagebox.askyesno("Modify Entry?", f"Do you want to edit this entry?\nWebsite: {website}\nUsername: {username}"):
-            success, message = GuiLogicInterface.edit_entry(self.master.user_id, website, username, password)
+            success, message = gui_api.edit_entry(self.master.user_id, website, username, password)
             if success:
                 messagebox.showinfo("Modified Success!", message)
             else:
@@ -280,78 +293,119 @@ class PasswordManagerFrame(BaseFrame):
     def on_delete_button(self):
         website = self.website_entry.get()
         username = self.username_entry.get()
+        gui_api = GuiLogicInterface()
         if messagebox.askyesno("Delete Entry?", f"Do you want to delete this entry?\nWebsite: {website}\nUsername:{username}"):
-            success, message = GuiLogicInterface.delete_entry(self.master.user_id, website, username)
+            success, message = gui_api.delete_entry(self.master.user_id, website, username)
             if success:
-                GuiLogicInterface.log_message("info",message)
+                gui_api.log_message("info",message)
                 messagebox.showinfo("Deleted Entry!", message)
             else:
-                GuiLogicInterface.log_message("error", message)
+                gui_api.log_message("error", message)
                 messagebox.showerror("Deleted Entry!", message)
         else:
-            GuiLogicInterface.log_message("error", message)
+            gui_api.log_message("error", message)
             messagebox.showerror("Delete Entry?", "Entry does not exist.")
         
 
     def on_search_button(self):
         website = self.website_entry.get()
         username = self.username_entry.get()
-        GuiLogicInterface.log_message("info", "Entry was found!")
-        password = GuiLogicInterface.get_password(self.master.user_id, website, username)
+
+        gui_api = GuiLogicInterface()
+        gui_api.log_message("info", "Entry was found!")
+        password = gui_api.get_password(self.master.user_id, website, username)
         if password:
             messagebox.showinfo("Password for Entry", f"Your password is {password}")
         else:
             messagebox.showerror("Password for Entry", "Entry does not exist.")
     
     def on_list_button(self):
-        entries = GuiLogicInterface.list_entries(self.master.user_id)
+        gui_api = GuiLogicInterface()
+        entries = gui_api.list_entries(self.master.user_id)
+        
+        self.list_window = tk.Toplevel(self)
+        self.list_window.title("Entries List")
+
+        self.list_window.grid_rowconfigure(0, weight=1)
+        self.list_window.grid_columnconfigure(0, weight=1)
+
+        scrollbar = tk.Scrollbar(self.list_window)
+        scrollbar.grid(row=0, column=1, sticky="ns")
+
+        listbox = tk.Listbox(self.list_window, yscrollcommand=scrollbar.set)
+        gui_api.log_message("info", f"Retrieving list entries for current_user: {self.master.username}")
         for entry in entries:
-            print(entry)
+            listbox.insert(tk.END, f"Entry {entry[0]} - Website: {entry[1]} Username:{entry[2]} Date Created:{entry[3]} Date Modified: {entry[4]}")
+        listbox.grid(row=0, column=0, sticky="nsew")
+        scrollbar.config(command=listbox.yview)
 
     def on_settings_button(self):
         self.settings_window = tk.Toplevel(self)
         self.settings_window.title("Settings")
         settings_label = tk.Label(self.settings_window, text="Settings")
         settings_label.grid(row=0, column=1)
+
+        # Change Font 
         changefont_label = tk.Label(self.settings_window, text="Change Font:")
         changefont_label.grid(row=1, column=0, pady=10, padx=10)
+
         self.changefont_dropdownbox = ttk.Combobox(self.settings_window, values=("Times New Roman", "Arial", "Impact"))
         self.changefont_dropdownbox.grid(row=1, column=1)
-        
+       
+        # Encryption settings checkboxes 
+        encrypt_label = tk.Label(self.settings_window, text="Encrypt Data")
+        encrypt_label.grid(row=2, column=0, pady=10, padx=10)
+        self.encrypt_status = tk.StringVar()
+        self.checkbox_True = ttk.Radiobutton(self.settings_window, value="ON", variable=self.encrypt_status, command=self.display_encrypt_status)
+        self.checkbox_True.grid(row=2, column=1)
+        self.checkbox_False = ttk.Radiobutton(self.settings_window, value="OFF", variable=self.encrypt_status, command=self.display_encrypt_status)
+        self.checkbox_False.grid(row=2, column=2)
+
+        # Database settings
+        database_label = tk.Label(self.settings_window, text="Change Database:")
+        database_label.grid(row=3, column=0, pady=10, padx=10)
+        self.database_dropdownbox = ttk.Combobox(self.settings_window, values=("Sqlite3", "MySQL", "PostgresSQL"))
+        self.database_dropdownbox.grid(row=3, column=1)
+
+        # Buttons in settings window
+        apply_button = tk.Button(self.settings_window, text="Apply", command=self.on_apply_button)
+        apply_button.grid(row=4, column=1, pady=10)
+        reset_default_button = tk.Button(self.settings_window, text="Reset Defaults", command=self.on_reset_defaults_button) 
+        reset_default_button.grid(row=4, column=2, pady=10)
+
         # set default value for dropdownbox
-        saved_font = GuiLogicInterface.get_user_setting(self.master.user_id, "font_type")
+        saved_font = self.master.user_settings
+        print(saved_font)
 
         if saved_font:
             self.changefont_dropdownbox.set(saved_font)
         else:
             self.changefont_dropdownbox.set("Select an option")
-        # bind selected event 
+      
         self.changefont_dropdownbox.bind("<<ComboxSelected>>", self.on_settings_font_dropbox)
 
-        # Encryption settings checkboxes 
-        encrypt_label = tk.Label(self.settings_window, text="Encrypt Data")
-        encrypt_label.grid(row=2, column=0, pady=10, padx=10)
-        self.encrypt_status = tk.StringVar()
-        self.checkbox_True = ttk.Radiobutton(self.settings_window, value="On", variable=self.encrypt_status, command=self.display_encrypt_status)
-        self.checkbox_True.grid(row=2, column=1)
-        self.checkbox_False = ttk.Radiobutton(self.settings_window, value="OFF", variable=self.encrypt_status, command=self.display_encrypt_status)
-        self.checkbox_False.grid(row=2, column=2)
 
-        encryption_status = GuiLogicInterface.get_user_setting(self.master.user_id, "encryption")
+        encryption_status = str(self.master.user_settings['encryption'])
         if encryption_status is not None:
             self.encrypt_status.set(str(encryption_status))
         
+        saved_db_option = self.master.user_settings
 
-        apply_button = tk.Button(self.settings_window, text="Apply", command=self.on_apply_button)
-        apply_button.grid(row=3, column=1, pady=10)
-        reset_default_button = tk.Button(self.settings_window, text="Reset Defaults", command=self.on_reset_defaults_button) 
-        reset_default_button.grid(row=3, column=2, pady=10)
+        if saved_db_option:
+            self.database_dropdownbox.set(saved_db_option)
+        else:
+            self.database_dropdownbox.set("Select an option")
+      
+        self.database_dropdownbox.bind("<<ComboxSelected>>", self.on_settings_db_dropbox)
+        
+
+
 
     def on_settings_font_dropbox(self, event=None):
-        selected_value = self.changefont_dropdownbox.get()
-        if selected_value:
-            self.master.user_data.set_option("font-type", selected_value)
-            
+        self.master.user_settings['font-type'] = self.changefont_dropdownbox.get()
+
+    def on_settings_db_dropbox(self, event=None):
+        pass
     
     def display_encrypt_status(self):
         if self.encrypt_status.get() == "True":
@@ -360,24 +414,27 @@ class PasswordManagerFrame(BaseFrame):
             print(self.encrypt_status.get())
 
     def on_apply_button(self):
+        gui_api = GuiLogicInterface()
+        file_name = f"{self.master.user_id}_settings.json"
         if messagebox.askyesno("Apply changes?", "Do you want to apply changes to settings?"):
-            encryption = True if self.encrypt_status.get() == "True" else False
-            GuiLogicInterface.update_setting(self.master.user_id, "encryption", encryption)
-            font_type = self.changefont_dropdownbox.get()
-            GuiLogicInterface.update_setting(self.master.user_id, "font-type", font_type)
+           for key, value in self.user_settings.keys():
+               gui_api.update_setting(key, value, file_name=file_name)
         
 
     def on_reset_defaults_button(self):
+        gui_api = GuiLogicInterface()
         if messagebox.askyesno("Reset Default Settings?", "Do you want to reset to defaults?"):
-            GuiLogicInterface.reset_to_defaults()
-            #Reinitialize the settings GUI to reflect the default values
-            self.on_settings_button()
+            self.master.user_settings = gui_api.reset_defaults()
+
 
     def on_logout_button(self):
+        gui_api = GuiLogicInterface()
         if messagebox.askyesno("Logout?", "Do you want to logout?"):
             self.master.user_id = None
             self.master.username = None
-            self.master.user_data = None
+            self.master.user_settings.clear()
+            gui_api.log_message('info', "Attempting to logout user....")
+            gui_api.log_message('info', "Returning to login....")
             self.switch_frame("Logout")
 
 

@@ -1,16 +1,12 @@
 import sqlite3
-import os
-from config import directory, db_path
 from utils import logging
+from utils.file_creator import create_directory, create_file_path
+from config import config
 
-def create_directory(dir_path):
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
-    logging.log_info(f"{dir_path} was created.")
-
+create_directory("data")
+db_config_file = create_file_path(config['db_dir_name'], config['db_name'])
 def init_db():
-    create_directory(directory)
-    with sqlite3.connect(db_path) as connection:
+    with sqlite3.connect(db_config_file) as connection:
         cursor = connection.cursor()
         try:
             cursor.execute("PRAGMA foreign_keys = ON")
@@ -56,8 +52,8 @@ def init_db():
                     user_id TEXT NOT NULL,
                     unique_code VARCHAR(6),
                     code_timestamp DATETIME,
-                    expired BOOLEAN DEFAULT FALSE
-                    FOREIGN KEY (user_id) REFERENCES user(user_id)
+                    expired BOOLEAN DEFAULT FALSE,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id)
                 );
             ''')
             connection.commit()

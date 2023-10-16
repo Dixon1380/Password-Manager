@@ -2,14 +2,13 @@ import smtplib
 from email.mime.text import MIMEText
 import os
 import json
-from config import directory
 from utils import logging
 
 
 EMAIL_SETTINGS = {}
 
 # Create your own email settings using JSON
-json_file_path = os.path.join(directory, 'email_settings.json')
+json_file_path = os.path.join('data', 'email_settings.json')
 
 def load_json_from_file(json_file):
     with open(json_file, 'r') as file:
