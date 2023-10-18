@@ -33,7 +33,7 @@ class Account:
         Returns:
         - bool: True if verification is successful, False otherwise.
         """
-        result = dbm.get_password_by_user(user_id, username)
+        result = dbm.get_password_by_username(username)
         if result:
             stored_password = result[0]
             return check_password(password.encode('utf-8'), stored_password.encode('utf-8'))
@@ -56,8 +56,8 @@ class Account:
         hashed_password = cls.hash_password(password)
         success = dbm.register_user(user_id, username, hashed_password, email)
         if success:
-            return True, user_id
+            return True
         else:
-            return False, None
+            return False
     
   

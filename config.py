@@ -2,15 +2,14 @@ import json
 import utils.file_creator as file
 import utils.logging as logging
 
-USER_DATA_DIR = 'user_data'
+CONFIG_DIR = 'config'
 DB_DIR_NAME = 'data'
 DB_NAME = 'users.db'
 
 class Config:
-    def __init__(self, user_id='user'): # 'user' value is for default json files 
-        self.user_id = user_id
-        self.settings_filename = file.create_file_path(USER_DATA_DIR, f"{self.user_id}_settings.json")
-        self.db_setings_filename = file.create_file_path(DB_DIR_NAME, f"{self.user_id}_db_settings.json")
+    def __init__(self):
+        self.settings_filename = file.create_file_path(CONFIG_DIR, f"pmapp_settings.json")
+        self.db_setings_filename = file.create_file_path(DB_DIR_NAME, f"pmapp_db_settings.json")
         
         if not file.file_path_exists(self.settings_filename) and file.file_path_exists(self.db_setings_filename):
             self._create_new_user_configs()
@@ -30,13 +29,14 @@ class Config:
     def update_setting(self, setting_key, value):
         settings = self._load_configurations(self.settings_filename)
         settings[setting_key] = value
-        self._save_configurations(settings, self.db_setings_filename)
+        self._save_configurations(settings, self.settings_filename)
     
     def update_settings(self, settings_dict):
         old_settings = self._load_configurations(self.settings_filename)
-        for key in settings_dict.keys():
-            if key not in old_settings:
-                old_settings[key] = old_settings[key]
+        for key, value in settings_dict.items():
+            old_settings[key] = value
+        
+        self._save_configurations(old_settings, self.settings_filename)
 
     def get_db_config(self):
         return self._load_configurations(self.db_setings_filename)

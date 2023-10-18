@@ -34,7 +34,7 @@ def check_credentials(username, password):
             if Account.verify(username, password):
                 logging.log_info("Success. Account does exists.")
                 logging.log_info("Processing account for login.....")
-                user_id = dbm.get_user_id_by_username(username)
+                user_id = dbm.get_user_id_from_db(username)
                 return True, user_id, username
             else:
                logging.log_info("Account does not exist. Either password or username is not spelled corrently.")
@@ -51,7 +51,8 @@ def add_user(username, password, confirm_password, email):
             if success:
                 logging.log_info("Success. Password does meet complexity requirements.")
                 logging.log_warn("Attempting to add user.....")
-                if Account.create_user(username, password, email):
+                user_id = generate_user_id()
+                if Account.create_user(user_id, username, password, email):
                     logging.log_info(f"Success. User {username} was successfully added to our database.")   
                     return True, f"{username} has been successfully registered!"
                 else:
@@ -76,7 +77,7 @@ def get_user_details_by_email(email):
             str: The user_id from database.
      """
      username = dbm.get_username_by_email(email)
-     user_id = dbm.get_user_id_by_username(username)
+     user_id = dbm.get_user_id_from_db(username)
      return username, user_id
 
 def send_reset_password_email(email):
@@ -102,7 +103,7 @@ def reset_password(password, confirm_password, email, code):
             hashed_password = Account.hash_password(password)
             username = dbm.get_username_by_email(email)
             if username:
-                 user_id = dbm.get_user_id_by_username(username)
+                 user_id = dbm.get_user_id_from_db(username)
                  if user_id:
                     stored_code, code_timestamp = dbm.get_code_from_db(user_id)
                  if stored_code == code and not utils.is_expired(code_timestamp):
@@ -140,13 +141,13 @@ def modify_entry(user_id, website, username, new_password):
     """
     hashed_password = hash.hash_password(new_password)
     try:
-        stored_entry = dbm.get_entry_by_user_id(user_id)
+        stored_entry = dbm.get_entry_from_db(user_id)
 
         if not stored_entry:
             raise ValueError("No entry found for given user_id.")
         if website != stored_entry[0] or username != stored_entry[1]:
             raise ValueError("Entry did not match any stored record.")
-        if dbm.update_entry_by_user_id(user_id, website, username, hashed_password):
+        if dbm.update_entry(user_id, website, username, hashed_password):
             return True, "Entry was successfully updated."
         else:
             raise ValueError("Error occurred when updating entry.")
@@ -164,7 +165,7 @@ def list_entries(user_id):
     Returns:
     - List: The list of entries associated with the user_id.
     """
-    entries = dbm.get_entries_by_user_id(user_id)
+    entries = dbm.get_entries(user_id)
     return entries
 
     
@@ -223,7 +224,7 @@ def delete_entry(user_id, website, username):
         - string: Message based on bool (True or False)
         """
         if dbm.check_entry_exists(user_id, website, username):
-            success = dbm.delete_entry_by_user_id(user_id, website, username)
+            success = dbm.delete_entry_from_db(user_id, website, username)
             if success:
                 return True, "Entry was successfully deleted."
             else:
@@ -237,41 +238,37 @@ def delete_entry(user_id, website, username):
 def initialize_user_settings(user_id):
     """Creates the user_settings file for user if not exists."""
     config = Config(user_id)
-    user_settings_config = config._load_configurations(config.settings_filename)
-    user_db_config = config._load_configurations(config.db_setings_filename)
-    return user_settings_config, user_db_config
+    settings_config = config._load_configurations(config.settings_filename)
+    db_config = config._load_configurations(config.db_setings_filename)
+    return settings_config, db_config
     
     
-def update_user_settings(user_id, setting_dict):
+def update_settings(setting_dict):
     """
     Update a specific setting for a user.
     """
-    config = Config(user_id)
-    for key, value in setting_dict:
-        config.update_setting()
+    config = Config()
+    config.update_settings(setting_dict)
     
+def update_db_settings(setting_dict):
+    config = Config()
+    db_config = config._load_configurations(config.db_setings_filename)
+    for key, value in setting_dict:
+        if key not in setting_dict:
+            db_config[key] = value
+    config.update_db_config(db_config)
 
-def load_user_settings(user_id, file_path):
-    if user_id not in file_path:
-        raise ValueError("Can not user settings from another user.")
-    config = Config(user_id)
+def load_settings(file_path):
+    config = Config()
     config.settings_filename = file_path
     user_settings = config._load_configurations(file_path)
     return user_settings
 
-def load_user_db_settings(user_id, db_file_path):
-    if user_id not in db_file_path:
-        raise ValueError("Can not user db settings from another user.")
-    config = Config(user_id)
-    config.db_setings_filename = db_file_path
-    db_config = config._load_configurations(db_file_path)
-    return db_config
-
 def load_default_settings():
     config = Config()
-    user_settings = config._load_configurations(config.settings_filename)
-    db_user_settings = config._load_configurations(config.db_setings_filename)
-    return user_settings, db_user_settings
+    settings = config._load_configurations(config.settings_filename)
+    db_config = config._load_configurations(config.db_setings_filename)
+    return settings, db_config
 
 def change_user_account_password(user_id, password, confirm_password):
     if utils.is_password_match(password, confirm_password):

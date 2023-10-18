@@ -34,9 +34,8 @@ class BaseDatabase:
 class DatabaseFactory:
 
     @staticmethod
-    def create_connection(user_id, db_type):
-        config = Config(user_id)
-
+    def create_connection(db_type):
+        config = Config()
         if db_type == "sqlite":
             return SQLiteConnection(config)
         elif db_type == "mysql":
@@ -115,17 +114,14 @@ class PostgreSQLConnection(BaseDatabase):
 
 def db_connection(func):
     def wrapper(*args, **kwargs):
-        user_id = kwargs.get('user_id')
-        if not user_id:
-            raise ValueError("user_id is required")
-        db_type = Config(user_id).get_db_config("db_type")
-        with DatabaseFactory.create_connection(user_id, db_type) as db:
+        db_type = Config().get_db_config("db_type")
+        with DatabaseFactory.create_connection(db_type) as db:
             with db.connection.cursor() as cursor:
                 return func(cursor, *args, db=db, **kwargs)
     return wrapper
 
 @db_connection
-def check_account_exist(user_id, cursor, db, email):
+def check_account_exist(cursor, db, email):
     query = f"SELECT COUNT(*) FROM users WHERE email={db.placeholder}"
     try:
         cursor.execute(query, (email,))
@@ -136,7 +132,7 @@ def check_account_exist(user_id, cursor, db, email):
         return False
 
 @db_connection
-def get_username_by_email(user_id, cursor, db, email):
+def get_username_by_email(cursor, db, email):
     query = f"SELECT username FROM users WHERE email={db.placeholder}"
     try:
         cursor.execute(query, (email,))
@@ -148,7 +144,7 @@ def get_username_by_email(user_id, cursor, db, email):
         return None
 
 @db_connection
-def update_password(user_id, cursor, db , email, password):
+def update_password(cursor, db , email, password):
     query = f'UPDATE users SET password={db.placeholder} WHERE email={db.placeholder}'
     try:
         cursor.execute(query, (password, email))
@@ -157,7 +153,7 @@ def update_password(user_id, cursor, db , email, password):
     return True
 
 @db_connection
-def get_password_by_user(user_id, cursor, db, username):
+def get_password_by_username(cursor, db, username):
     query = f'SELECT password FROM users WHERE username={db.placeholder}'
     try:
         cursor.execute(query, (username,))
@@ -180,7 +176,7 @@ def delete_account_from_db(user_id, cursor, db):
 
 
 @db_connection
-def register_user(user_id, cursor, db, username, password, email):
+def register_user(cursor, db, user_id, username, password, email):
     # Generate a unique user_id using uuid
     query = f'INSERT INTO users (user_id, username, password, email, date_created, is_lockout) VALUES (
         {db.placeholder}, 
@@ -203,7 +199,7 @@ def register_user(user_id, cursor, db, username, password, email):
     return True
 
 @db_connection
-def get_username_from_db(user_id, cursor, db, username):
+def get_user_id_from_db(cursor, db, username):
     query =f"SELECT user_id FROM users WHERE username={db.placeholder}"
     try:
         cursor.execute(query, (username,))
