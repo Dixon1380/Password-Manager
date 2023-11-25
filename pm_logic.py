@@ -235,9 +235,9 @@ def delete_entry(user_id, website, username):
           
 # Main Application's Settings Functions
 
-def initialize_user_settings(user_id):
-    """Creates the user_settings file for user if not exists."""
-    config = Config(user_id)
+def initialize_settings():
+    """Initalize settings"""
+    config = Config()
     settings_config = config._load_configurations(config.settings_filename)
     db_config = config._load_configurations(config.db_setings_filename)
     return settings_config, db_config
@@ -270,10 +270,10 @@ def load_default_settings():
     db_config = config._load_configurations(config.db_setings_filename)
     return settings, db_config
 
-def change_user_account_password(user_id, password, confirm_password):
+def change_user_account_password(password, confirm_password):
     if utils.is_password_match(password, confirm_password):
         hashed_password = Account.hash_password(password)
-        email = dbm.get_email_by_user_id(user_id)
+        email = dbm.get_email_by_user_id()
         success = dbm.update_password(email, hashed_password)
         if success:
             return True

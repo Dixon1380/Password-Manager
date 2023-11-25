@@ -22,7 +22,7 @@ class Account:
 
 
     @classmethod
-    def verify(cls, user_id, username, password):
+    def verify(cls,username, password):
         """
         Verifies user in the database
 

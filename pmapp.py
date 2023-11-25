@@ -1,8 +1,9 @@
 import tkinter as tk
 from gui import LoginFrame, RegisterFrame, ForgotPasswordFrame, PasswordManagerFrame
-import database_setup as dbs
+import database_manager as dbm
 from utils import logging
-
+import utils.file_creator as file
+from config import Config
 
 
 # Main application 
@@ -12,13 +13,27 @@ class PMApp(tk.Tk):
 
         self.user_id = None
         self.username = None
-        self.user_settings = {}
+        self.app_config = None
+        self.settings = {}
         self.title("Password Manager 1.0")
         self.geometry("800x300")
+        
+        self.init_app()
 
-        if dbs.init_db():
-             logging.log_info("Database was successfully intialized.")
-             self.show_login_frame()
+    def init_db(self):
+        app_config = Config()
+        app_config._create_configs()
+        return dbm.create_users_table() and dbm.create_passwords_table() and dbm.create_usercodes_table()
+    
+    def init_app(self):
+        app_config = Config()
+        if not file.file_path_exists(app_config.settings_filename):
+            file.create_directory("config")
+            file.create_file(app_config.settings_filename)
+            self.settings = app_config._load_configurations()
+        if self.init_db():
+            logging.log_info("Database was successfully intialized.")
+            self.show_login_frame()
         else:
             logging.log_error("Database failed to initalized....")
 
@@ -54,5 +69,5 @@ class PMApp(tk.Tk):
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        
+    
 

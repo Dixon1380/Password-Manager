@@ -89,13 +89,15 @@ class GuiLogicInterface:
     def save_settings(self, user_id, settings):
         logging.log_warn("Applying changes to user's settings file.")
         logging.log_info("Saving changes....")
-        pm_logic.update_user_settings(user_id, settings)
+        pm_logic.update_settings(user_id, settings)
 
-    def load_settings(self, user_id):
+    def init_settings(self, user_id):
         logging.log_info("Loading user settings....")
-        return pm_logic.initialize_user_settings(user_id)
+        return pm_logic.initialize_settings(user_id)
         
-
+    def load_settings(self):
+        return pm_logic.load_settings()
+    
     def load_settings_from_file(self, file_name):
         logging.log_info("Loading user settings from file....")
         return pm_logic.load_settings()

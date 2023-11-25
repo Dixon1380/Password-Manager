@@ -87,7 +87,8 @@ class LoginFrame(BaseFrame):
             if success:
                 self.master.user_id = user_id
                 self.master.username = username
-                self.master.user_settings = gui_api.load_settings(self.master.user_id)
+                gui_api.init_settings
+                self.master.app_settings, self.master.app_config = gui_api.load_settings()
                 gui_api.log_message("info", f"{username} is now logged in.")
                 messagebox.showinfo("Login Success", "You are now logged in.")
                 if success:
@@ -374,7 +375,7 @@ class PasswordManagerFrame(BaseFrame):
         reset_default_button.grid(row=4, column=2, pady=10)
 
         # set default value for dropdownbox
-        saved_font = self.master.user_settings
+        saved_font = self.master.app_settings['font_type']
         print(saved_font)
 
         if saved_font:
@@ -385,11 +386,11 @@ class PasswordManagerFrame(BaseFrame):
         self.changefont_dropdownbox.bind("<<ComboxSelected>>", self.on_settings_font_dropbox)
 
 
-        encryption_status = str(self.master.user_settings['encryption'])
+        encryption_status = str(self.master.app_settings['encryption'])
         if encryption_status is not None:
             self.encrypt_status.set(str(encryption_status))
         
-        saved_db_option = self.master.user_settings
+        saved_db_option = self.master.app_settings['encryption']
 
         if saved_db_option:
             self.database_dropdownbox.set(saved_db_option)
@@ -402,7 +403,7 @@ class PasswordManagerFrame(BaseFrame):
 
 
     def on_settings_font_dropbox(self, event=None):
-        self.master.user_settings['font-type'] = self.changefont_dropdownbox.get()
+        self.master.app_settings['font-type'] = self.changefont_dropdownbox.get()
 
     def on_settings_db_dropbox(self, event=None):
         pass
@@ -415,10 +416,8 @@ class PasswordManagerFrame(BaseFrame):
 
     def on_apply_button(self):
         gui_api = GuiLogicInterface()
-        file_name = f"{self.master.user_id}_settings.json"
         if messagebox.askyesno("Apply changes?", "Do you want to apply changes to settings?"):
-           for key, value in self.user_settings.keys():
-               gui_api.update_setting(key, value, file_name=file_name)
+            gui_api.save_settings()
         
 
     def on_reset_defaults_button(self):

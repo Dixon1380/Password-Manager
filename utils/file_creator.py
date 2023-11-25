@@ -14,7 +14,9 @@ def create_directory(dir_path):
     logging.log_info(f"{dir_path} was created.")
 
 def create_file_path(directory, file_name):
-    return os.path.join(directory, file_name)
+    root_dir = os.getcwd()
+    path = os.path.join(root_dir, directory)
+    return os.path.join(path, file_name)
 
 def file_path_exists(file_path):
-    return os.path.exist(file_path)
+    return os.path.exists(file_path)
